@@ -49,8 +49,7 @@ public class PowerWidget extends FrameLayout {
 
     public static final String BUTTON_DELIMITER = "|";
 
-    private static final String BUTTONS_DEFAULT = PowerButton.BUTTON_WIFI
-                             + BUTTON_DELIMITER + PowerButton.BUTTON_BLUETOOTH
+    private static final String BUTTONS_DEFAULT = PowerButton.BUTTON_BLUETOOTH
                              + BUTTON_DELIMITER + PowerButton.BUTTON_GPS
                              + BUTTON_DELIMITER + PowerButton.BUTTON_SOUND;
 
@@ -152,10 +151,6 @@ public class PowerWidget extends FrameLayout {
         if (buttons == null) {
             Log.i(TAG, "Default buttons being loaded");
             buttons = BUTTONS_DEFAULT;
-            // Add the WiMAX button if it's supported
-            if (WimaxHelper.isWimaxSupported(mContext)) {
-                buttons += BUTTON_DELIMITER + PowerButton.BUTTON_WIMAX;
-            }
         }
         Log.i(TAG, "Button list: " + buttons);
 
