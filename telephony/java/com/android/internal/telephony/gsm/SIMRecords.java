@@ -145,6 +145,7 @@ public final class SIMRecords extends IccRecords {
     private static final int EVENT_SIM_REFRESH = 31;
     private static final int EVENT_GET_CFIS_DONE = 32;
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
+    private static final int EVENT_GET_GID1_DONE = 34;
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
 
@@ -216,6 +217,7 @@ public final class SIMRecords extends IccRecords {
         efCPHS_MWI = null;
         spdiNetworks = null;
         pnnHomeName = null;
+        gid1 = null;
 
         adnCache.reset();
 
@@ -242,6 +244,10 @@ public final class SIMRecords extends IccRecords {
 
     public String getMsisdnNumber() {
         return msisdn;
+    }
+
+    public String getGid1(){
+        return gid1;
     }
 
     /**
@@ -1066,6 +1072,22 @@ public final class SIMRecords extends IccRecords {
                 handleEfCspData(data);
                 break;
 
+            case EVENT_GET_GID1_DONE:
+                isRecordLoadResponse = true;
+
+                ar = (AsyncResult)msg.obj;
+                data =(byte[])ar.result;
+
+                if (ar.exception != null) {
+                    Log.e(LOG_TAG, "Exception in get GID1 " + ar.exception);
+                    gid1 = null;
+                    break;
+                }
+                gid1 = IccUtils.bytesToHexString(data);
+                Log.i(LOG_TAG, "GID1: " + gid1);
+
+                break;
+
         }}catch (RuntimeException exc) {
             // I don't want these exceptions to be fatal
             Log.w(LOG_TAG, "Exception parsing SIM record", exc);
@@ -1346,6 +1368,10 @@ public final class SIMRecords extends IccRecords {
 
         iccFh.loadEFTransparent(EF_CSP_CPHS,obtainMessage(EVENT_GET_CSP_CPHS_DONE));
         recordsToLoad++;
+      
+        iccFh.loadEFTransparent(EF_GID1, obtainMessage(EVENT_GET_GID1_DONE));
+        recordsToLoad++;
+
 
         // XXX should seek instead of examining them all
         if (false) { // XXX

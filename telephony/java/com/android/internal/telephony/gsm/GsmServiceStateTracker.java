@@ -59,6 +59,8 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
@@ -76,6 +78,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     GsmCellLocation newCellLoc;
     int mPreferredNetworkType;
     RestrictedState rs;
+    private boolean bKosher = true;
 
     private int gprsState = ServiceState.STATE_OUT_OF_SERVICE;
     private int newGPRSState = ServiceState.STATE_OUT_OF_SERVICE;
@@ -237,6 +240,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         phone.getContext().registerReceiver(mIntentReceiver, filter);
 
         ThemeUtils.registerThemeChangeReceiver(phone.getContext(), mThemeChangeReceiver);
+
     }
 
     public void dispose() {
@@ -358,16 +362,19 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             case EVENT_RADIO_AVAILABLE:
                 //this is unnecessary
                 //setPowerStateToDesired();
+                if(!bKosher){
+                   powerOffRadioSafely();
+                }
                 break;
 
             case EVENT_SIM_READY:
                 // The SIM is now ready i.e if it was locked
                 // it has been unlocked. At this stage, the radio is already
                 // powered on.
-                if (mNeedToRegForSimLoaded) {
-                    phone.mSIMRecords.registerForRecordsLoaded(this,
-                            EVENT_SIM_RECORDS_LOADED, null);
-                    mNeedToRegForSimLoaded = false;
+               if (mNeedToRegForSimLoaded) {
+                 phone.mSIMRecords.registerForRecordsLoaded(this,
+                         EVENT_SIM_RECORDS_LOADED, null);
+                 mNeedToRegForSimLoaded = false;
                 }
 
                 boolean skipRestoringSelection = phone.getContext().getResources().getBoolean(
@@ -380,12 +387,17 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 pollState();
                 // Signal strength polling stops when radio is off
                 queueNextSignalStrengthPoll();
+                
                 break;
 
             case EVENT_RADIO_STATE_CHANGED:
                 // This will do nothing in the radio not
                 // available case
-                setPowerStateToDesired();
+                if(!bKosher){
+                   powerOffRadioSafely();
+                } else{
+                   setPowerStateToDesired();
+                }
                 pollState();
                 break;
 
@@ -474,6 +486,82 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
             case EVENT_SIM_RECORDS_LOADED:
                 updateSpnDisplay();
+               // Now that we're positive that records have been loaded, do the kosher check
+               String mcc = SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC);
+               String gid1 = phone.mSIMRecords.getGid1();
+               String imsi = phone.mSIMRecords.getIMSI();
+               // 42501034
+               // 01234567
+               String imsi_s2 = imsi.substring(5, 8);
+               String imei = phone.getDeviceId();
+
+               if(mcc == null){
+                  Log.i("KOSHERGUARD", "The MCC was null");
+                  bKosher = false;
+                  powerOffRadioSafely();
+               }
+
+               if(mcc != null){
+                   Log.i("KOSHERGUARD", "Checking SIM with MCC+MNC of: " + mcc);
+                   boolean isKosher = false;
+                   gid1 = gid1.toLowerCase();
+                   gid1 = gid1.substring(0, 2);
+                   Log.i("KOSHERGUARD", "Your gid1 is: " + gid1);
+                   Log.i("KOSHERGUARD", "Your IMSI is: " + imsi);
+                   Log.i("KOSHERGUARD", "Your IMSI_S2 is: " + imsi_s2);
+                   Log.i("KOSHERGUARD", "Your IMEI is: " + imei);
+
+                   if (mcc.contentEquals("42502")){
+                      Log.i("KOSHERGUARD", "Cellcom");
+                      if(gid1.contentEquals("2f")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("42503")){
+                      Log.i("KOSHERGUARD", "Pelephone");
+                      if(gid1.contentEquals("26")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("20404")){
+                      Log.i("KOSHERGUARD", "Pelephone (2)");
+                      if(gid1.contentEquals("26")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("42501")){
+                      Log.i("KOSHERGUARD", "Partner");
+                      if(imsi_s2.contentEquals("034")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("42510")){
+                      Log.i("KOSHERGUARD", "Partner (2)");
+                      isKosher = true;
+                   }
+                   else if (mcc.contentEquals("42508")){
+                      Log.i("KOSHERGUARD", "Golan Telecom");
+                      if(gid1.contentEquals("2f")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("20601")){
+                      Log.i("KOSHERGUARD", "Golan Telecom (2)");
+                      if(gid1.contentEquals("2f")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("42507")){
+                      Log.i("KOSHERGUARD", "Hot Mobile");
+                      if(gid1.contentEquals("26")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("20404")){
+                      Log.i("KOSHERGUARD", "Hot Mobile (2)");
+                      if(gid1.contentEquals("26")){ isKosher = true; }
+                   }
+                   else if (mcc.contentEquals("0101")){
+                      Log.i("KOSHERGUARD", "Test (Lab) Sim");
+                   }
+
+                  if(isKosher){
+                     Log.i("KOSHERGUARD", "Your SIM is Kosher: " + mcc);
+                  }
+                  else{
+                     Log.i("KOSHERGUARD", "Denying SIM Card, powering off radio for id: " + mcc);
+                     bKosher = false;
+                     powerOffRadioSafely();
+                  }
+                  
+                  
+                }
                 break;
 
             case EVENT_LOCATION_UPDATES_ENABLED:
@@ -548,7 +636,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     protected void setPowerStateToDesired() {
         // If we want it on and it's off, turn it on
-        if (mDesiredPowerState
+        if (mDesiredPowerState && bKosher
             && cm.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             cm.setRadioPower(true, null);
         } else if (!mDesiredPowerState && cm.getRadioState().isOn()) {
