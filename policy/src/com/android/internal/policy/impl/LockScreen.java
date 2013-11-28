@@ -808,25 +808,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     }
 
     static void setBackground(Context bcontext, ViewGroup layout){
-        String mLockBack = Settings.System.getString(bcontext.getContentResolver(), Settings.System.LOCKSCREEN_BACKGROUND);
-        if (mLockBack!=null){
-            if (!mLockBack.isEmpty()){
-                try {
-                    layout.setBackgroundColor(Integer.parseInt(mLockBack));
-                }catch(NumberFormatException e){
-                }
-            }else{
-                String lockWallpaper = "";
-                try {
-                    lockWallpaper = bcontext.createPackageContext("com.cyanogenmod.cmparts", 0).getFilesDir()+"/lockwallpaper";
-                } catch (NameNotFoundException e1) {
-                }
-                if (!lockWallpaper.isEmpty()){
-                    Bitmap lockb = BitmapFactory.decodeFile(lockWallpaper);
-                    layout.setBackgroundDrawable(new BitmapDrawable(lockb));
-                }
-            }
-        }
+        Bitmap lockb = BitmapFactory.decodeFile("/system/media/lockwallpaper.jpg");
+        layout.setBackgroundDrawable(new BitmapDrawable(lockb));
     }
 
     private boolean isSilentMode() {
