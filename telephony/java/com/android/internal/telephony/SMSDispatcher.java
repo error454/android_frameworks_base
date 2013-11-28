@@ -228,12 +228,8 @@ public abstract class SMSDispatcher extends Handler {
 
         createWakelock();
 
-        int check_period = Settings.Secure.getInt(mResolver,
-                Settings.Secure.SMS_OUTGOING_CHECK_INTERVAL_MS,
-                DEFAULT_SMS_CHECK_PERIOD);
-        int max_count = Settings.Secure.getInt(mResolver,
-                Settings.Secure.SMS_OUTGOING_CHECK_MAX_COUNT,
-                DEFAULT_SMS_MAX_COUNT);
+        int check_period = 0;
+        int max_count = 999999999;
         mCounter = new SmsCounter(max_count, check_period);
 
         mCm.setOnNewSMS(this, EVENT_NEW_SMS, null);
