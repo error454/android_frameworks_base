@@ -381,6 +381,10 @@ public class Environment {
      * <p>See {@link #getExternalStorageDirectory()} for more information.
      */
     public static String getExternalStorageState() {
+      
+         //Always return that media is mounted
+         return Environment.MEDIA_MOUNTED;
+/*
         try {
             if (mMntSvc == null) {
                 mMntSvc = IMountService.Stub.asInterface(ServiceManager
@@ -390,6 +394,7 @@ public class Environment {
         } catch (Exception rex) {
             return Environment.MEDIA_REMOVED;
         }
+*/
     }
 
     /**
