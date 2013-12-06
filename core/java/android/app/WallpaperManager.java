@@ -273,9 +273,50 @@ public class WallpaperManager {
         
         private Bitmap getDefaultWallpaperLocked(Context context) {
             try {
-                Bitmap wall = BitmapFactory.decodeFile("/system/media/wallpaper.jpg");
-                return wall;
-            } catch (Exception e) {
+                InputStream is = context.getResources().openRawResource(
+                        com.android.internal.R.drawable.default_wallpaper);
+                if (is != null) {
+                    int width = mService.getWidthHint();
+                    int height = mService.getHeightHint();
+                    
+                    if (width <= 0 || height <= 0) {
+                        // Degenerate case: no size requested, just load
+                        // bitmap as-is.
+                        Bitmap bm = null;
+                        try {
+                            bm = BitmapFactory.decodeStream(is, null, null);
+                        } catch (OutOfMemoryError e) {
+                            Log.w(TAG, "Can't decode stream", e);
+                        }
+                        try {
+                            is.close();
+                        } catch (IOException e) {
+                        }
+                        if (bm != null) {
+                            bm.setDensity(DisplayMetrics.DENSITY_DEVICE);
+                        }
+                        return bm;
+                    }
+                    
+                    // Load the bitmap with full color depth, to preserve
+                    // quality for later processing.
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inDither = false;
+                    options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                    Bitmap bm = BitmapFactory.decodeStream(is, null, options);
+                    try {
+                        is.close();
+                    } catch (IOException e) {
+                    }
+                    
+                    try {
+                        return generateBitmap(context, bm, width, height);
+                    } catch (OutOfMemoryError e) {
+                        Log.w(TAG, "Can't generate default bitmap", e);
+                        return bm;
+                    }
+                }
+            } catch (RemoteException e) {
             }
             return null;
         }
